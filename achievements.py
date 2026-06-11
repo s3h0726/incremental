@@ -2,10 +2,6 @@
 
 ACHIEVEMENTS = {
 
-    # =====================
-    # 에너지 업적
-    # =====================
-
     "energy_100": {
         "name": "첫 번째 전력",
         "description": "에너지 100 달성",
@@ -36,10 +32,6 @@ ACHIEVEMENTS = {
         "reward": 1.25
     },
 
-    # =====================
-    # 건물 업적
-    # =====================
-
     "build_10": {
         "name": "건설 시작",
         "description": "건물 10개 보유",
@@ -64,10 +56,6 @@ ACHIEVEMENTS = {
         "reward": 1.35
     },
 
-    # =====================
-    # 부품 업적
-    # =====================
-
     "parts_10": {
         "name": "부품 생산",
         "description": "부품 10개 획득",
@@ -86,10 +74,6 @@ ACHIEVEMENTS = {
         "reward": 1.25
     },
 
-    # =====================
-    # 드론 업적
-    # =====================
-
     "drones_10": {
         "name": "드론 군단",
         "description": "드론 10개 획득",
@@ -101,10 +85,6 @@ ACHIEVEMENTS = {
         "description": "드론 100개 획득",
         "reward": 1.30
     },
-
-    # =====================
-    # 양자코어 업적
-    # =====================
 
     "quantum_1": {
         "name": "양자 시대",
@@ -118,10 +98,6 @@ ACHIEVEMENTS = {
         "reward": 2.00
     },
 
-    # =====================
-    # 초월 업적
-    # =====================
-
     "trans_1": {
         "name": "초월자",
         "description": "초월점수 1 획득",
@@ -134,10 +110,6 @@ ACHIEVEMENTS = {
         "reward": 3.00
     },
 
-    # =====================
-    # 현실붕괴 업적
-    # =====================
-
     "reality_1": {
         "name": "현실 균열",
         "description": "현실붕괴 1회",
@@ -149,8 +121,9 @@ ACHIEVEMENTS = {
         "description": "현실붕괴 10회",
         "reward": 10.00
     }
-
 }
+
+
 def total_buildings(session):
 
     return sum(
@@ -166,10 +139,7 @@ def check_achievements(session):
     parts = session.parts
     drones = session.drones
     quantum = session.quantum_cores
-
-    transcendence = (
-        session.transcendence
-    )
+    transcendence = session.transcendence
 
     reality = getattr(
         session,
@@ -183,100 +153,61 @@ def check_achievements(session):
 
     checks = {
 
-        "energy_100":
-            energy >= 100,
+        "energy_100": energy >= 100,
+        "energy_1000": energy >= 1000,
+        "energy_10000": energy >= 10000,
+        "energy_1m": energy >= 1_000_000,
+        "energy_1b": energy >= 1_000_000_000,
 
-        "energy_1000":
-            energy >= 1000,
+        "build_10": buildings >= 10,
+        "build_50": buildings >= 50,
+        "build_100": buildings >= 100,
+        "build_500": buildings >= 500,
 
-        "energy_10000":
-            energy >= 10000,
+        "parts_10": parts >= 10,
+        "parts_100": parts >= 100,
+        "parts_1000": parts >= 1000,
 
-        "energy_1m":
-            energy >= 1_000_000,
+        "drones_10": drones >= 10,
+        "drones_100": drones >= 100,
 
-        "energy_1b":
-            energy >= 1_000_000_000,
+        "quantum_1": quantum >= 1,
+        "quantum_10": quantum >= 10,
 
-        "build_10":
-            buildings >= 10,
+        "trans_1": transcendence >= 1,
+        "trans_10": transcendence >= 10,
 
-        "build_50":
-            buildings >= 50,
-
-        "build_100":
-            buildings >= 100,
-
-        "build_500":
-            buildings >= 500,
-
-        "parts_10":
-            parts >= 10,
-
-        "parts_100":
-            parts >= 100,
-
-        "parts_1000":
-            parts >= 1000,
-
-        "drones_10":
-            drones >= 10,
-
-        "drones_100":
-            drones >= 100,
-
-        "quantum_1":
-            quantum >= 1,
-
-        "quantum_10":
-            quantum >= 10,
-
-        "trans_1":
-            transcendence >= 1,
-
-        "trans_10":
-            transcendence >= 10,
-
-        "reality_1":
-            reality >= 1,
-
-        "reality_10":
-            reality >= 10
-
+        "reality_1": reality >= 1,
+        "reality_10": reality >= 10
     }
 
     for achievement_id, passed in checks.items():
 
-        if passed:
+        if passed and achievement_id not in session.achievements:
 
-            if (
+            session.achievements.append(
                 achievement_id
-                not in session.achievements
-            ):
+            )
 
-                session.achievements.append(
-                    achievement_id
-                )
-
-                unlocked.append(
-                    achievement_id
-                )
+            unlocked.append(
+                achievement_id
+            )
 
     return unlocked
-    def achievement_multiplier(
-    session
-):
+
+
+def achievement_multiplier(session):
 
     multiplier = 1.0
 
-    for achievement_id in (
-        session.achievements
-    ):
+    for achievement_id in session.achievements:
 
-        multiplier *= (
-            ACHIEVEMENTS[
-                achievement_id
-            ]["reward"]
-        )
+        if achievement_id in ACHIEVEMENTS:
+
+            multiplier *= (
+                ACHIEVEMENTS[
+                    achievement_id
+                ]["reward"]
+            )
 
     return multiplier
