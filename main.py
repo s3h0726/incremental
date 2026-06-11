@@ -1,14 +1,41 @@
-import streamlit as st
+# main.py
+
 import time
+import streamlit as st
 
 from styles import load_css
-from upgrades import BUILDINGS
-from prestige import calculate_prestige_gain
+from upgrades import BUILDINGS, get_building_cost, get_total_production
+from prestige import (
+    calculate_parts,
+    calculate_drones,
+    calculate_quantum_cores,
+    calculate_transcendence,
+    calculate_reality_breaks
+)
+from research import RESEARCH_TREE, buy_research, can_unlock
+from achievements import (
+    ACHIEVEMENTS,
+    check_achievements,
+    achievement_multiplier
+)
+from save import (
+    save_game,
+    load_game,
+    delete_save,
+    auto_save
+)
+from events import (
+    initialize_event_data,
+    update_event_effects,
+    random_event
+)
 from utils import format_number
 
-# -----------------------------
+
+# =====================================
 # 페이지 설정
-# -----------------------------
+# =====================================
+
 st.set_page_config(
     page_title="Quantum Factory",
     page_icon="⚡",
@@ -17,276 +44,357 @@ st.set_page_config(
 
 load_css()
 
-# -----------------------------
-# 세션 데이터 초기화
-# -----------------------------
-defaults = {
+
+# =====================================
+# 세션 초기화
+# =====================================
+
+DEFAULTS = {
     "energy": 0.0,
-    "parts": 0.0,
-    "drones": 0.0,
-    "quantum_cores": 0.0,
+    "parts": 0,
+    "drones": 0,
+    "quantum_cores": 0,
     "transcendence": 0,
+    "reality_breaks": 0,
 
     "click_power": 1,
     "energy_per_second": 0,
 
     "owned_buildings": {},
-
-    "achievements": [],
     "research": [],
+    "achievements": [],
 
     "last_update": time.time()
 }
 
-for key, value in defaults.items():
+for key, value in DEFAULTS.items():
+
     if key not in st.session_state:
         st.session_state[key] = value
 
-# -----------------------------
-# 오프라인 생산 계산
-# -----------------------------
+
+initialize_event_data(
+    st.session_state
+)
+
+
+# =====================================
+# 저장 불러오기
+# =====================================
+
+if "loaded" not in st.session_state:
+
+    load_game(st.session_state)
+
+    st.session_state.loaded = True
+
+
+# =====================================
+# 오프라인 생산
+# =====================================
+
 current_time = time.time()
 
-elapsed = current_time - st.session_state.last_update
+elapsed = (
+    current_time
+    - st.session_state.last_update
+)
+
+multiplier = achievement_multiplier(
+    st.session_state
+)
+
+event_multiplier = (
+    st.session_state.event_multiplier
+)
 
 st.session_state.energy += (
-    st.session_state.energy_per_second * elapsed
+    st.session_state.energy_per_second
+    * elapsed
+    * multiplier
+    * event_multiplier
 )
 
-st.session_state.last_update = current_time
-
-# -----------------------------
-# 헤더
-# -----------------------------
-st.markdown(
-    """
-    <h1 style='text-align:center'>
-    ⚡ Quantum Factory
-    </h1>
-    """,
-    unsafe_allow_html=True
+st.session_state.last_update = (
+    current_time
 )
 
-# -----------------------------
+
+# =====================================
+# 이벤트
+# =====================================
+
+update_event_effects(
+    st.session_state
+)
+
+event_message = random_event(
+    st.session_state
+)
+
+if event_message:
+    st.toast(event_message)
+
+
+# =====================================
+# 업적 검사
+# =====================================
+
+new_achievements = (
+    check_achievements(
+        st.session_state
+    )
+)
+
+for achievement_id in new_achievements:
+
+    st.toast(
+        f"🏆 업적 달성: "
+        f"{ACHIEVEMENTS[achievement_id]['name']}"
+    )
+
+
+# =====================================
+# 제목
+# =====================================
+
+st.title("⚡ Quantum Factory")
+
+
+# =====================================
 # 자원 표시
-# -----------------------------
-col1, col2, col3, col4, col5 = st.columns(5)
+# =====================================
 
-with col1:
+c1, c2, c3 = st.columns(3)
+
+with c1:
     st.metric(
         "⚡ 에너지",
-        format_number(st.session_state.energy)
+        format_number(
+            st.session_state.energy
+        )
     )
 
-with col2:
+with c2:
     st.metric(
         "🔩 부품",
-        format_number(st.session_state.parts)
+        format_number(
+            st.session_state.parts
+        )
     )
 
-with col3:
+with c3:
     st.metric(
         "🤖 드론",
-        format_number(st.session_state.drones)
+        format_number(
+            st.session_state.drones
+        )
     )
 
-with col4:
-    st.metric(
-        "🌌 양자코어",
-        format_number(st.session_state.quantum_cores)
-    )
 
-with col5:
-    st.metric(
-        "♾ 초월점수",
-        format_number(st.session_state.transcendence)
-    )
-
-st.divider()
-
-# -----------------------------
+# =====================================
 # 탭
-# -----------------------------
+# =====================================
+
 tabs = st.tabs([
     "⚡ 생산",
-    "🏭 업그레이드",
+    "🏭 건물",
     "🧪 연구",
     "🏆 업적",
     "♾ 프레스티지",
     "⚙ 설정"
 ])
 
-# =====================================================
-# 생산 탭
-# =====================================================
+
+# =====================================
+# 생산
+# =====================================
+
 with tabs[0]:
 
-    st.subheader("에너지 생산")
+    st.subheader("수동 생산")
 
     if st.button(
-        "⚡ GENERATE",
-        use_container_width=True
+        "⚡ 에너지 생산"
     ):
+
         st.session_state.energy += (
             st.session_state.click_power
         )
+
         st.rerun()
 
-    st.write(
-        f"클릭 생산량 : "
-        f"{format_number(st.session_state.click_power)}"
-    )
 
-    st.write(
-        f"자동 생산량 : "
-        f"{format_number(st.session_state.energy_per_second)}/s"
-    )
+# =====================================
+# 건물
+# =====================================
 
-# =====================================================
-# 업그레이드 탭
-# =====================================================
 with tabs[1]:
 
-    st.subheader("시설")
+    st.subheader("건물 구매")
 
-    for building_id, building in BUILDINGS.items():
+    for building_id, data in BUILDINGS.items():
 
-        owned = st.session_state.owned_buildings.get(
-            building_id,
-            0
+        owned = (
+            st.session_state
+            .owned_buildings
+            .get(
+                building_id,
+                0
+            )
         )
 
-        cost = building["base_cost"] * (
-            1.15 ** owned
+        cost = get_building_cost(
+            data["cost"],
+            owned
         )
 
-        with st.container():
+        col1, col2 = st.columns([3,1])
 
-            left, right = st.columns([4,1])
+        with col1:
 
-            with left:
-                st.markdown(
-                    f"""
-                    **{building['name']}**
-
-                    생산량:
-                    {building['production']}/s
-
-                    보유:
-                    {owned}
-                    """
-                )
-
-            with right:
-
-                if st.button(
-                    f"구매 {building_id}"
-                ):
-
-                    if (
-                        st.session_state.energy
-                        >= cost
-                    ):
-                        st.session_state.energy -= cost
-
-                        st.session_state.owned_buildings[
-                            building_id
-                        ] = owned + 1
-
-                        st.session_state.energy_per_second += (
-                            building["production"]
-                        )
-
-                        st.rerun()
-
-            st.caption(
-                f"비용: "
-                f"{format_number(cost)}"
+            st.write(
+                f"{data['name']} "
+                f"(보유 {owned})"
             )
 
-# =====================================================
+        with col2:
+
+            if st.button(
+                f"구매 {building_id}"
+            ):
+
+                if (
+                    st.session_state.energy
+                    >= cost
+                ):
+
+                    st.session_state.energy -= cost
+
+                    st.session_state.owned_buildings[
+                        building_id
+                    ] = owned + 1
+
+                    st.session_state.energy_per_second = (
+                        get_total_production(
+                            st.session_state
+                            .owned_buildings
+                        )
+                    )
+
+                    st.rerun()
+
+
+# =====================================
 # 연구
-# =====================================================
+# =====================================
+
 with tabs[2]:
 
-    st.subheader("연구소")
+    st.subheader("연구")
 
-    st.info(
-        "research.py에서 구현 예정"
-    )
+    for research_id, research in RESEARCH_TREE.items():
 
-# =====================================================
+        unlocked = can_unlock(
+            research_id,
+            st.session_state.research
+        )
+
+        owned = (
+            research_id
+            in st.session_state.research
+        )
+
+        if owned:
+
+            st.success(
+                research["name"]
+            )
+
+        elif unlocked:
+
+            if st.button(
+                f"{research['name']} "
+                f"({research['cost']})"
+            ):
+
+                buy_research(
+                    research_id,
+                    st.session_state
+                )
+
+                st.rerun()
+
+
+# =====================================
 # 업적
-# =====================================================
+# =====================================
+
 with tabs[3]:
 
-    st.subheader("업적")
-
-    if not st.session_state.achievements:
-        st.write("획득한 업적이 없습니다.")
-
-    for achievement in (
+    for achievement_id in (
         st.session_state.achievements
     ):
-        st.success(achievement)
 
-# =====================================================
+        achievement = (
+            ACHIEVEMENTS[
+                achievement_id
+            ]
+        )
+
+        st.success(
+            achievement["name"]
+        )
+
+
+# =====================================
 # 프레스티지
-# =====================================================
+# =====================================
+
 with tabs[4]:
 
-    st.subheader("초월")
-
-    gain = calculate_prestige_gain(
-        st.session_state.energy
-    )
+    st.subheader("프레스티지")
 
     st.write(
-        f"획득 가능한 초월점수: "
-        f"{gain}"
+        f"획득 가능 부품: "
+        f"{calculate_parts(st.session_state.energy)}"
     )
 
     if st.button(
-        "♾ 프레스티지 실행"
+        "🔩 부품 프레스티지"
     ):
+
+        gain = calculate_parts(
+            st.session_state.energy
+        )
 
         if gain > 0:
 
-            st.session_state.transcendence += gain
-
+            st.session_state.parts += gain
             st.session_state.energy = 0
-            st.session_state.parts = 0
-            st.session_state.drones = 0
-            st.session_state.quantum_cores = 0
-
-            st.session_state.energy_per_second = 0
-            st.session_state.owned_buildings = {}
 
             st.rerun()
 
-# =====================================================
+
+# =====================================
 # 설정
-# =====================================================
+# =====================================
+
 with tabs[5]:
 
-    st.subheader("설정")
+    if st.button("💾 저장"):
+        save_game(st.session_state)
 
-    if st.button(
-        "데이터 초기화"
-    ):
-
-        for key in list(
-            st.session_state.keys()
-        ):
-            del st.session_state[key]
-
+    if st.button("📂 불러오기"):
+        load_game(st.session_state)
         st.rerun()
 
-# -----------------------------
-# 푸터
-# -----------------------------
-st.divider()
+    if st.button("🗑 저장 삭제"):
+        delete_save()
 
-st.caption(
-    "Quantum Factory v0.1"
-)
+
+# =====================================
+# 자동 저장
+# =====================================
+
+auto_save(st.session_state)
