@@ -245,7 +245,7 @@ with tabs[1]:
         )
 
         cost = get_building_cost(
-            data.get("cost", 0)
+            data.get("cost", 0),
             owned
         )
 
