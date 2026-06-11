@@ -151,3 +151,132 @@ ACHIEVEMENTS = {
     }
 
 }
+def total_buildings(session):
+
+    return sum(
+        session.owned_buildings.values()
+    )
+
+
+def check_achievements(session):
+
+    unlocked = []
+
+    energy = session.energy
+    parts = session.parts
+    drones = session.drones
+    quantum = session.quantum_cores
+
+    transcendence = (
+        session.transcendence
+    )
+
+    reality = getattr(
+        session,
+        "reality_breaks",
+        0
+    )
+
+    buildings = total_buildings(
+        session
+    )
+
+    checks = {
+
+        "energy_100":
+            energy >= 100,
+
+        "energy_1000":
+            energy >= 1000,
+
+        "energy_10000":
+            energy >= 10000,
+
+        "energy_1m":
+            energy >= 1_000_000,
+
+        "energy_1b":
+            energy >= 1_000_000_000,
+
+        "build_10":
+            buildings >= 10,
+
+        "build_50":
+            buildings >= 50,
+
+        "build_100":
+            buildings >= 100,
+
+        "build_500":
+            buildings >= 500,
+
+        "parts_10":
+            parts >= 10,
+
+        "parts_100":
+            parts >= 100,
+
+        "parts_1000":
+            parts >= 1000,
+
+        "drones_10":
+            drones >= 10,
+
+        "drones_100":
+            drones >= 100,
+
+        "quantum_1":
+            quantum >= 1,
+
+        "quantum_10":
+            quantum >= 10,
+
+        "trans_1":
+            transcendence >= 1,
+
+        "trans_10":
+            transcendence >= 10,
+
+        "reality_1":
+            reality >= 1,
+
+        "reality_10":
+            reality >= 10
+
+    }
+
+    for achievement_id, passed in checks.items():
+
+        if passed:
+
+            if (
+                achievement_id
+                not in session.achievements
+            ):
+
+                session.achievements.append(
+                    achievement_id
+                )
+
+                unlocked.append(
+                    achievement_id
+                )
+
+    return unlocked
+    def achievement_multiplier(
+    session
+):
+
+    multiplier = 1.0
+
+    for achievement_id in (
+        session.achievements
+    ):
+
+        multiplier *= (
+            ACHIEVEMENTS[
+                achievement_id
+            ]["reward"]
+        )
+
+    return multiplier
