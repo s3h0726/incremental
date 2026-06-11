@@ -210,3 +210,41 @@ RESEARCH_TREE = {
         "requires": ["universe_1"]
     }
 }
+def can_unlock(research_id, owned_research):
+
+    research = RESEARCH_TREE[research_id]
+
+    for requirement in research["requires"]:
+
+        if requirement not in owned_research:
+            return False
+
+    return True
+
+
+def buy_research(
+    research_id,
+    session
+):
+
+    research = RESEARCH_TREE[research_id]
+
+    if research_id in session.research:
+        return False
+
+    if session.parts < research["cost"]:
+        return False
+
+    if not can_unlock(
+        research_id,
+        session.research
+    ):
+        return False
+
+    session.parts -= research["cost"]
+
+    session.research.append(
+        research_id
+    )
+
+    return True
